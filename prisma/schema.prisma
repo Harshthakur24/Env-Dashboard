@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model IngestionRow {
+  id           String   @id @default(cuid())
+  location     String
+  visitDate    DateTime
+  composters   Int
+  wetWasteKg   Float
+  brownWasteKg Float
+  leachateL    Float
+  harvestKg    Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([location, visitDate])
+  @@index([visitDate])
+  @@index([location])
+}
