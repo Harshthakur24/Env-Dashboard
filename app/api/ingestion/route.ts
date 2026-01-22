@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { parseIngestionWorkbook } from "@/lib/ingestion/parse";
-import { Prisma, type Prisma as PrismaTypes } from "@prisma/client";
+import { join, sqltag } from "@prisma/client/runtime/client";
 import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
@@ -41,21 +41,19 @@ export async function GET(req: Request) {
   const from = searchParams.get("from") || undefined;
   const to = searchParams.get("to") || undefined;
 
-  const where: PrismaTypes.IngestionRowWhereInput = {
-    ...(location ? { location } : {}),
-    ...(from || to
-      ? {
-          visitDate: {
-            ...(from ? { gte: new Date(from) } : {}),
-            ...(to ? { lte: new Date(to) } : {}),
-          },
-        }
-      : {}),
-  };
-
   try {
     const rows = await db.ingestionRow.findMany({
-      where,
+      where: {
+        ...(location ? { location } : {}),
+        ...(from || to
+          ? {
+              visitDate: {
+                ...(from ? { gte: new Date(from) } : {}),
+                ...(to ? { lte: new Date(to) } : {}),
+              },
+            }
+          : {}),
+      },
       orderBy: { visitDate: "asc" },
     });
 
@@ -105,13 +103,13 @@ export async function POST(req: Request) {
     for (const batch of chunk(parsed.rows, BATCH_SIZE)) {
       const values = batch.map(
         (r) =>
-          Prisma.sql`(${randomUUID()}, ${r.location}, ${r.visitDate}, ${r.composters}, ${r.wetWasteKg}, ${r.brownWasteKg}, ${r.leachateL}, ${r.harvestKg}, NOW(), NOW())`,
+          sqltag`(${randomUUID()}, ${r.location}, ${r.visitDate}, ${r.composters}, ${r.wetWasteKg}, ${r.brownWasteKg}, ${r.leachateL}, ${r.harvestKg}, NOW(), NOW())`,
       );
 
-      const res = await db.$queryRaw<{ inserted: boolean }[]>(Prisma.sql`
+      const res = await db.$queryRaw<{ inserted: boolean }[]>(sqltag`
         INSERT INTO "IngestionRow"
           ("id","location","visitDate","composters","wetWasteKg","brownWasteKg","leachateL","harvestKg","createdAt","updatedAt")
-        VALUES ${Prisma.join(values)}
+        VALUES ${join(values)}
         ON CONFLICT ("location","visitDate") DO UPDATE SET
           "composters" = EXCLUDED."composters",
           "wetWasteKg" = EXCLUDED."wetWasteKg",
