@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { parseIngestionWorkbook } from "@/lib/ingestion/parse";
-import type { Prisma } from "@prisma/client";
+import { Prisma, type Prisma as PrismaTypes } from "@prisma/client";
+import { randomUUID } from "crypto";
 
 export const runtime = "nodejs";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, message }, { status });
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 function databaseErrorMessage() {
@@ -34,7 +41,7 @@ export async function GET(req: Request) {
   const from = searchParams.get("from") || undefined;
   const to = searchParams.get("to") || undefined;
 
-  const where: Prisma.IngestionRowWhereInput = {
+  const where: PrismaTypes.IngestionRowWhereInput = {
     ...(location ? { location } : {}),
     ...(from || to
       ? {
@@ -72,8 +79,13 @@ export async function POST(req: Request) {
     return jsonError("Only Excel files (.xlsx/.xls) are supported.");
   }
 
-  const buffer = await file.arrayBuffer();
-  const parsed = parseIngestionWorkbook(buffer);
+  let parsed: ReturnType<typeof parseIngestionWorkbook>;
+  try {
+    const buffer = await file.arrayBuffer();
+    parsed = parseIngestionWorkbook(buffer);
+  } catch {
+    return jsonError("Could not read/parse this Excel file. Please re-save it as .xlsx and try again.", 400);
+  }
 
   if (parsed.rows.length === 0) {
     return NextResponse.json(
@@ -86,31 +98,34 @@ export async function POST(req: Request) {
   let updated = 0;
 
   try {
-    await db.$transaction(async (tx) => {
-      for (const r of parsed.rows) {
-        const existing = await tx.ingestionRow.findUnique({
-          where: { location_visitDate: { location: r.location, visitDate: r.visitDate } },
-          select: { id: true },
-        });
+    // Avoid Prisma interactive transactions (default 5s timeout on some providers like Neon).
+    // Use batched SQL UPSERTs instead: much faster and no interactive tx timeout.
+    const BATCH_SIZE = 500;
 
-        if (existing) {
-          updated += 1;
-          await tx.ingestionRow.update({
-            where: { id: existing.id },
-            data: {
-              composters: r.composters,
-              wetWasteKg: r.wetWasteKg,
-              brownWasteKg: r.brownWasteKg,
-              leachateL: r.leachateL,
-              harvestKg: r.harvestKg,
-            },
-          });
-        } else {
-          created += 1;
-          await tx.ingestionRow.create({ data: r });
-        }
-      }
-    });
+    for (const batch of chunk(parsed.rows, BATCH_SIZE)) {
+      const values = batch.map(
+        (r) =>
+          Prisma.sql`(${randomUUID()}, ${r.location}, ${r.visitDate}, ${r.composters}, ${r.wetWasteKg}, ${r.brownWasteKg}, ${r.leachateL}, ${r.harvestKg}, NOW(), NOW())`,
+      );
+
+      const res = await db.$queryRaw<{ inserted: boolean }[]>(Prisma.sql`
+        INSERT INTO "IngestionRow"
+          ("id","location","visitDate","composters","wetWasteKg","brownWasteKg","leachateL","harvestKg","createdAt","updatedAt")
+        VALUES ${Prisma.join(values)}
+        ON CONFLICT ("location","visitDate") DO UPDATE SET
+          "composters" = EXCLUDED."composters",
+          "wetWasteKg" = EXCLUDED."wetWasteKg",
+          "brownWasteKg" = EXCLUDED."brownWasteKg",
+          "leachateL" = EXCLUDED."leachateL",
+          "harvestKg" = EXCLUDED."harvestKg",
+          "updatedAt" = NOW()
+        RETURNING (xmax = 0) AS inserted
+      `);
+
+      const createdBatch = res.reduce((acc, r) => acc + (r.inserted ? 1 : 0), 0);
+      created += createdBatch;
+      updated += res.length - createdBatch;
+    }
   } catch {
     return jsonError(databaseErrorMessage(), 500);
   }

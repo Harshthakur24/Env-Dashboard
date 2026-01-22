@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { z } from "zod";
-import { REQUIRED_COLUMNS, type RequiredColumn } from "./constants";
+import { COLUMN_ALIASES, REQUIRED_COLUMNS, type RequiredColumn } from "./constants";
 import { ingestionRowSchema, type IngestionRowInput } from "./schema";
 
 const MAX_ROWS = 50_000;
@@ -13,7 +13,10 @@ function normalizeHeader(header: unknown): string {
 }
 
 const requiredNormalized = new Map<string, RequiredColumn>(
-  REQUIRED_COLUMNS.map((c) => [normalizeHeader(c), c]),
+  REQUIRED_COLUMNS.flatMap((c) => {
+    const aliases = COLUMN_ALIASES[c] ?? [];
+    return [c, ...aliases].map((label) => [normalizeHeader(label), c] as const);
+  }),
 );
 
 function isBlankCell(v: unknown): boolean {

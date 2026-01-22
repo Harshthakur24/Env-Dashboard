@@ -8,8 +8,26 @@ declare global {
 }
 
 function buildPoolConfig(): PoolConfig {
-  const connectionString = process.env.DATABASE_URL;
+  const originalConnectionString = process.env.DATABASE_URL;
+  let connectionString = originalConnectionString;
   const cfg: PoolConfig = { connectionString };
+
+  // Silence upcoming pg-connection-string warning and keep current behavior:
+  // treat sslmode=require/prefer/verify-ca as verify-full explicitly.
+  // Only rewrite when sslmode is already present (don't force SSL for local dev).
+  if (typeof connectionString === "string" && connectionString.length > 0) {
+    try {
+      const url = new URL(connectionString);
+      const sslmode = url.searchParams.get("sslmode");
+      if (sslmode === "prefer" || sslmode === "require" || sslmode === "verify-ca") {
+        url.searchParams.set("sslmode", "verify-full");
+        connectionString = url.toString();
+        cfg.connectionString = connectionString;
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   // If DATABASE_URL omits the password (e.g. postgresql://user@host/db),
   // pg ends up with password=null which breaks SCRAM auth.

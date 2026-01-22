@@ -15,6 +15,7 @@ export function UploadCard({ onUploaded }: { onUploaded?: () => void }) {
   const [file, setFile] = React.useState<File | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [result, setResult] = React.useState<UploadResult | null>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +39,7 @@ export function UploadCard({ onUploaded }: { onUploaded?: () => void }) {
   }
 
   return (
-    <Card>
+    <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
       <CardHeader>
         <CardTitle>Upload Excel</CardTitle>
         <CardDescription>
@@ -49,17 +50,35 @@ export function UploadCard({ onUploaded }: { onUploaded?: () => void }) {
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="file">Excel file</Label>
-            <Input
-              id="file"
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
+            <div className="group relative">
+              <Input
+                ref={inputRef}
+                id="file"
+                type="file"
+                accept=".xlsx,.xls"
+                className="cursor-pointer file:cursor-pointer"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              <div className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-transparent transition group-hover:ring-border/60" />
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button type="submit" disabled={!file || loading}>
+            <Button type="submit" disabled={!file || loading} className="min-w-28">
               {loading ? "Uploading…" : "Upload"}
             </Button>
+            {file ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setFile(null);
+                  if (inputRef.current) inputRef.current.value = "";
+                }}
+              >
+                Clear
+              </Button>
+            ) : null}
             {file ? (
               <Badge variant="secondary" className="max-w-full truncate">
                 {file.name}
@@ -68,7 +87,7 @@ export function UploadCard({ onUploaded }: { onUploaded?: () => void }) {
           </div>
 
           {result ? (
-            <div className="rounded-lg border bg-card p-3 text-sm">
+            <div className="animate-in fade-in zoom-in-95 rounded-lg border bg-card p-3 text-sm duration-200">
               {result.ok ? (
                 <div className="flex flex-wrap gap-2">
                   <Badge>Inserted: {result.created}</Badge>
