@@ -120,7 +120,7 @@ export async function POST(req: Request) {
         RETURNING (xmax = 0) AS inserted
       `);
 
-      const createdBatch = res.reduce((acc, r) => acc + (r.inserted ? 1 : 0), 0);
+      const createdBatch = res.reduce((acc: number, r) => acc + (r.inserted ? 1 : 0), 0);
       created += createdBatch;
       updated += res.length - createdBatch;
     }
