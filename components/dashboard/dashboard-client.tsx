@@ -90,6 +90,7 @@ export function DashboardClient({
     initialRows.map((r) => ({ ...r, visitDate: new Date(r.visitDate) })),
   );
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
   const [location, setLocation] = React.useState<string>("all");
   const [from, setFrom] = React.useState<string>("");
   const [to, setTo] = React.useState<string>("");
@@ -225,6 +226,7 @@ export function DashboardClient({
 
   const refresh = React.useCallback(async () => {
     setLoadError(null);
+    setLoading(true);
     try {
       const sp = new URLSearchParams();
       if (location !== "all") sp.set("location", location);
@@ -244,6 +246,8 @@ export function DashboardClient({
       setRows(json.rows.map((r) => ({ ...r, visitDate: new Date(r.visitDate) })));
     } catch {
       setLoadError("Failed to load data. Check your server logs / DATABASE_URL.");
+    } finally {
+      setLoading(false);
     }
   }, [location, from, to]);
 
@@ -342,39 +346,43 @@ export function DashboardClient({
             <CardTitle>Waste trend (daily total)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              className="h-[320px] w-full"
-              config={{
-                wet: { label: "Wet Waste (Kg)", color: "var(--chart-1)" },
-                brown: { label: "Brown Waste (Kg)", color: "var(--chart-2)" },
-              }}
-            >
-              <AreaChart data={daily} margin={{ left: 8, right: 8, top: 8 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
-                <YAxis width={40} />
-                <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
-                <Area
-                  type="monotone"
-                  dataKey="wetWasteKg"
-                  name="wet"
-                  stroke="var(--color-wet)"
-                  fill="var(--color-wet)"
-                  fillOpacity={0.15}
-                  strokeWidth={2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="brownWasteKg"
-                  name="brown"
-                  stroke="var(--color-brown)"
-                  fill="var(--color-brown)"
-                  fillOpacity={0.15}
-                  strokeWidth={2}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-              </AreaChart>
-            </ChartContainer>
+            {loading ? (
+              <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ChartContainer
+                className="h-[320px] w-full"
+                config={{
+                  wet: { label: "Wet Waste (Kg)", color: "var(--chart-1)" },
+                  brown: { label: "Brown Waste (Kg)", color: "var(--chart-2)" },
+                }}
+              >
+                <AreaChart data={daily} margin={{ left: 8, right: 8, top: 8 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
+                  <YAxis width={40} />
+                  <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                  <Area
+                    type="monotone"
+                    dataKey="wetWasteKg"
+                    name="wet"
+                    stroke="var(--color-wet)"
+                    fill="var(--color-wet)"
+                    fillOpacity={0.15}
+                    strokeWidth={2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="brownWasteKg"
+                    name="brown"
+                    stroke="var(--color-brown)"
+                    fill="var(--color-brown)"
+                    fillOpacity={0.15}
+                    strokeWidth={2}
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                </AreaChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -383,37 +391,41 @@ export function DashboardClient({
             <CardTitle>Leachate & harvest (daily total)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              className="h-[320px] w-full"
-              config={{
-                leachate: { label: "Leachate (L)", color: "var(--chart-4)" },
-                harvest: { label: "Harvest (Kg)", color: "var(--chart-5)" },
-              }}
-            >
-              <LineChart data={daily} margin={{ left: 8, right: 8, top: 8 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
-                <YAxis width={40} />
-                <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                <Line
-                  type="monotone"
-                  dataKey="leachateL"
-                  name="leachate"
-                  stroke="var(--color-leachate)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="harvestKg"
-                  name="harvest"
-                  stroke="var(--color-harvest)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-              </LineChart>
-            </ChartContainer>
+            {loading ? (
+              <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ChartContainer
+                className="h-[320px] w-full"
+                config={{
+                  leachate: { label: "Leachate (L)", color: "var(--chart-4)" },
+                  harvest: { label: "Harvest (Kg)", color: "var(--chart-5)" },
+                }}
+              >
+                <LineChart data={daily} margin={{ left: 8, right: 8, top: 8 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
+                  <YAxis width={40} />
+                  <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                  <Line
+                    type="monotone"
+                    dataKey="leachateL"
+                    name="leachate"
+                    stroke="var(--color-leachate)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="harvestKg"
+                    name="harvest"
+                    stroke="var(--color-harvest)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                </LineChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -424,26 +436,30 @@ export function DashboardClient({
             <CardTitle>Daily waste composition (stacked)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              className="h-[320px] w-full"
-              config={{
-                wet: { label: "Wet Waste (Kg)", color: "var(--chart-1)" },
-                brown: { label: "Brown Waste (Kg)", color: "var(--chart-2)" },
-              }}
-            >
-              <BarChart
-                data={daily.map((d) => ({ date: d.date, wet: d.wetWasteKg ?? 0, brown: d.brownWasteKg ?? 0 }))}
-                margin={{ left: 8, right: 8, top: 8 }}
+            {loading ? (
+              <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ChartContainer
+                className="h-[320px] w-full"
+                config={{
+                  wet: { label: "Wet Waste (Kg)", color: "var(--chart-1)" },
+                  brown: { label: "Brown Waste (Kg)", color: "var(--chart-2)" },
+                }}
               >
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
-                <YAxis width={40} />
-                <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                <Bar dataKey="wet" name="wet" stackId="waste" fill="var(--color-wet)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="brown" name="brown" stackId="waste" fill="var(--color-brown)" radius={[4, 4, 0, 0]} />
-                <ChartLegend content={<ChartLegendContent />} />
-              </BarChart>
-            </ChartContainer>
+                <BarChart
+                  data={daily.map((d) => ({ date: d.date, wet: d.wetWasteKg ?? 0, brown: d.brownWasteKg ?? 0 }))}
+                  margin={{ left: 8, right: 8, top: 8 }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
+                  <YAxis width={40} />
+                  <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                  <Bar dataKey="wet" name="wet" stackId="waste" fill="var(--color-wet)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="brown" name="brown" stackId="waste" fill="var(--color-brown)" radius={[4, 4, 0, 0]} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                </BarChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -452,25 +468,29 @@ export function DashboardClient({
             <CardTitle>Totals share (filtered)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              className="h-[320px] w-full"
-              config={{
-                wet: { label: "Wet Waste", color: "var(--chart-1)" },
-                brown: { label: "Brown Waste", color: "var(--chart-2)" },
-                leachate: { label: "Leachate", color: "var(--chart-4)" },
-                harvest: { label: "Harvest", color: "var(--chart-5)" },
-              }}
-            >
-              <PieChart>
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Pie data={shareData} dataKey="value" nameKey="name" innerRadius={68} outerRadius={92} paddingAngle={2}>
-                  {shareData.map((s) => (
-                    <Cell key={s.name} fill={`var(--color-${s.name})`} />
-                  ))}
-                </Pie>
-                <ChartLegend content={<ChartLegendContent nameKey="name" />} />
-              </PieChart>
-            </ChartContainer>
+            {loading ? (
+              <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ChartContainer
+                className="h-[320px] w-full"
+                config={{
+                  wet: { label: "Wet Waste", color: "var(--chart-1)" },
+                  brown: { label: "Brown Waste", color: "var(--chart-2)" },
+                  leachate: { label: "Leachate", color: "var(--chart-4)" },
+                  harvest: { label: "Harvest", color: "var(--chart-5)" },
+                }}
+              >
+                <PieChart>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Pie data={shareData} dataKey="value" nameKey="name" innerRadius={68} outerRadius={92} paddingAngle={2}>
+                    {shareData.map((s) => (
+                      <Cell key={s.name} fill={`var(--color-${s.name})`} />
+                    ))}
+                  </Pie>
+                  <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+                </PieChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -481,35 +501,39 @@ export function DashboardClient({
             <CardTitle>Top locations by total waste</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              className="h-[360px] w-full"
-              config={{
-                wet: { label: "Wet Waste (Kg)", color: "var(--chart-1)" },
-                brown: { label: "Brown Waste (Kg)", color: "var(--chart-2)" },
-              }}
-            >
-              <BarChart data={topLocations} layout="vertical" margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
-                <CartesianGrid horizontal={false} />
-                <XAxis type="number" />
-                <YAxis
-                  type="category"
-                  dataKey="location"
-                  width={120}
-                  tickFormatter={(v) => (String(v).length > 16 ? `${String(v).slice(0, 16)}…` : String(v))}
-                />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      indicator="dot"
-                      labelFormatter={(label) => <span className="font-medium">{String(label)}</span>}
-                    />
-                  }
-                />
-                <Bar dataKey="wet" name="wet" stackId="waste" fill="var(--color-wet)" radius={[4, 0, 0, 4]} />
-                <Bar dataKey="brown" name="brown" stackId="waste" fill="var(--color-brown)" radius={[0, 4, 4, 0]} />
-                <ChartLegend content={<ChartLegendContent />} />
-              </BarChart>
-            </ChartContainer>
+            {loading ? (
+              <div className="h-[360px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ChartContainer
+                className="h-[360px] w-full"
+                config={{
+                  wet: { label: "Wet Waste (Kg)", color: "var(--chart-1)" },
+                  brown: { label: "Brown Waste (Kg)", color: "var(--chart-2)" },
+                }}
+              >
+                <BarChart data={topLocations} layout="vertical" margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                  <CartesianGrid horizontal={false} />
+                  <XAxis type="number" />
+                  <YAxis
+                    type="category"
+                    dataKey="location"
+                    width={120}
+                    tickFormatter={(v) => (String(v).length > 16 ? `${String(v).slice(0, 16)}…` : String(v))}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        indicator="dot"
+                        labelFormatter={(label) => <span className="font-medium">{String(label)}</span>}
+                      />
+                    }
+                  />
+                  <Bar dataKey="wet" name="wet" stackId="waste" fill="var(--color-wet)" radius={[4, 0, 0, 4]} />
+                  <Bar dataKey="brown" name="brown" stackId="waste" fill="var(--color-brown)" radius={[0, 4, 4, 0]} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                </BarChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -518,37 +542,41 @@ export function DashboardClient({
             <CardTitle>Efficiency over time</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              className="h-[360px] w-full"
-              config={{
-                harvestPerWastePct: { label: "Harvest / Waste (%)", color: "var(--chart-5)" },
-                leachatePerWastePct: { label: "Leachate / Waste (%)", color: "var(--chart-4)" },
-              }}
-            >
-              <ComposedChart data={efficiencyDaily} margin={{ left: 8, right: 8, top: 8 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
-                <YAxis width={44} tickFormatter={(v) => `${v}%`} />
-                <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
-                <Line
-                  type="monotone"
-                  dataKey="harvestPerWastePct"
-                  name="harvestPerWastePct"
-                  stroke="var(--color-harvestPerWastePct)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="leachatePerWastePct"
-                  name="leachatePerWastePct"
-                  stroke="var(--color-leachatePerWastePct)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-              </ComposedChart>
-            </ChartContainer>
+            {loading ? (
+              <div className="h-[360px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ChartContainer
+                className="h-[360px] w-full"
+                config={{
+                  harvestPerWastePct: { label: "Harvest / Waste (%)", color: "var(--chart-5)" },
+                  leachatePerWastePct: { label: "Leachate / Waste (%)", color: "var(--chart-4)" },
+                }}
+              >
+                <ComposedChart data={efficiencyDaily} margin={{ left: 8, right: 8, top: 8 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
+                  <YAxis width={44} tickFormatter={(v) => `${v}%`} />
+                  <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                  <Line
+                    type="monotone"
+                    dataKey="harvestPerWastePct"
+                    name="harvestPerWastePct"
+                    stroke="var(--color-harvestPerWastePct)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="leachatePerWastePct"
+                    name="leachatePerWastePct"
+                    stroke="var(--color-leachatePerWastePct)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                </ComposedChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -559,55 +587,61 @@ export function DashboardClient({
             <CardTitle>Composters vs Harvest (scatter)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              className="h-[360px] w-full"
-              config={{
-                points: { label: "Records", color: "var(--chart-3)" },
-              }}
-            >
-              <ScatterChart margin={{ left: 8, right: 16, top: 8 }}>
-                <CartesianGrid />
-                <XAxis type="number" dataKey="x" name="Composters" tickMargin={8} />
-                <YAxis type="number" dataKey="y" name="Harvest (Kg)" width={44} />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      hideIndicator
-                      formatter={(value, name, _item, _idx, payload) => {
-                        const p = payload as unknown as ScatterPoint | undefined;
-                        if (name === "x") {
-                          return (
-                            <div className="flex w-full justify-between gap-4">
-                              <span className="text-muted-foreground">Composters</span>
-                              <span className="font-mono font-medium tabular-nums">{Number(value).toLocaleString()}</span>
-                            </div>
-                          );
-                        }
-                        if (name === "y") {
-                          return (
-                            <div className="flex w-full justify-between gap-4">
-                              <span className="text-muted-foreground">Harvest (Kg)</span>
-                              <span className="font-mono font-medium tabular-nums">{Number(value).toLocaleString()}</span>
-                            </div>
-                          );
-                        }
-                        if (p?.location) {
-                          return (
-                            <div className="flex w-full justify-between gap-4">
-                              <span className="text-muted-foreground">Location</span>
-                              <span className="font-medium">{String(p.location)}</span>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
+            {loading ? (
+              <div className="h-[360px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <>
+                <ChartContainer
+                  className="h-[360px] w-full"
+                  config={{
+                    points: { label: "Records", color: "var(--chart-3)" },
+                  }}
+                >
+                  <ScatterChart margin={{ left: 8, right: 16, top: 8 }}>
+                    <CartesianGrid />
+                    <XAxis type="number" dataKey="x" name="Composters" tickMargin={8} />
+                    <YAxis type="number" dataKey="y" name="Harvest (Kg)" width={44} />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          hideIndicator
+                          formatter={(value, name, _item, _idx, payload) => {
+                            const p = payload as unknown as ScatterPoint | undefined;
+                            if (name === "x") {
+                              return (
+                                <div className="flex w-full justify-between gap-4">
+                                  <span className="text-muted-foreground">Composters</span>
+                                  <span className="font-mono font-medium tabular-nums">{Number(value).toLocaleString()}</span>
+                                </div>
+                              );
+                            }
+                            if (name === "y") {
+                              return (
+                                <div className="flex w-full justify-between gap-4">
+                                  <span className="text-muted-foreground">Harvest (Kg)</span>
+                                  <span className="font-mono font-medium tabular-nums">{Number(value).toLocaleString()}</span>
+                                </div>
+                              );
+                            }
+                            if (p?.location) {
+                              return (
+                                <div className="flex w-full justify-between gap-4">
+                                  <span className="text-muted-foreground">Location</span>
+                                  <span className="font-medium">{String(p.location)}</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                      }
                     />
-                  }
-                />
-                <Scatter data={scatter} fill="var(--color-points)" name="points" />
-              </ScatterChart>
-            </ChartContainer>
-            <div className="mt-2 text-xs text-muted-foreground">Showing up to {scatter.length} recent records.</div>
+                    <Scatter data={scatter} fill="var(--color-points)" name="points" />
+                  </ScatterChart>
+                </ChartContainer>
+                <div className="mt-2 text-xs text-muted-foreground">Showing up to {scatter.length} recent records.</div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -616,38 +650,42 @@ export function DashboardClient({
             <CardTitle>Harvest vs Waste (daily)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer
-              className="h-[360px] w-full"
-              config={{
-                waste: { label: "Total Waste (Kg)", color: "var(--chart-2)" },
-                harvest: { label: "Harvest (Kg)", color: "var(--chart-5)" },
-              }}
-            >
-              <ComposedChart data={efficiencyDaily} margin={{ left: 8, right: 8, top: 8 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
-                <YAxis width={44} />
-                <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                <Area
-                  type="monotone"
-                  dataKey="waste"
-                  name="waste"
-                  stroke="var(--color-waste)"
-                  fill="var(--color-waste)"
-                  fillOpacity={0.12}
-                  strokeWidth={2}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="harvestKg"
-                  name="harvest"
-                  stroke="var(--color-harvest)"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-              </ComposedChart>
-            </ChartContainer>
+            {loading ? (
+              <div className="h-[360px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : (
+              <ChartContainer
+                className="h-[360px] w-full"
+                config={{
+                  waste: { label: "Total Waste (Kg)", color: "var(--chart-2)" },
+                  harvest: { label: "Harvest (Kg)", color: "var(--chart-5)" },
+                }}
+              >
+                <ComposedChart data={efficiencyDaily} margin={{ left: 8, right: 8, top: 8 }}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="date" tickMargin={8} tickFormatter={(v) => String(v).slice(5)} />
+                  <YAxis width={44} />
+                  <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                  <Area
+                    type="monotone"
+                    dataKey="waste"
+                    name="waste"
+                    stroke="var(--color-waste)"
+                    fill="var(--color-waste)"
+                    fillOpacity={0.12}
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="harvestKg"
+                    name="harvest"
+                    stroke="var(--color-harvest)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                </ComposedChart>
+              </ChartContainer>
+            )}
           </CardContent>
         </Card>
       </div>
