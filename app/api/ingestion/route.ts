@@ -145,6 +145,26 @@ export async function POST(req: Request) {
     // If history write fails, still return ingestion success.
   }
 
+  if (history?.id && parsed.rows.length) {
+    try {
+      const BATCH_SIZE = 500;
+      for (const batch of chunk(parsed.rows, BATCH_SIZE)) {
+        const pairs = batch.map(
+          (r) => sqltag`(${r.location}, ${r.visitDate})`,
+        );
+        await db.$executeRaw(sqltag`
+          UPDATE "IngestionRow"
+          SET "uploadId" = ${history.id}
+          FROM (VALUES ${join(pairs)}) AS v("location","visitDate")
+          WHERE "IngestionRow"."location" = v."location"
+            AND "IngestionRow"."visitDate" = v."visitDate"
+        `);
+      }
+    } catch {
+      // If linking fails, ignore to keep ingestion success.
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     created,

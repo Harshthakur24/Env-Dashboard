@@ -16,6 +16,8 @@ model IngestionRow {
   brownWasteKg Float
   leachateL    Float
   harvestKg    Float
+  uploadId     String?
+  upload       UploadHistory? @relation(fields: [uploadId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -23,6 +25,7 @@ model IngestionRow {
   @@unique([location, visitDate])
   @@index([visitDate])
   @@index([location])
+  @@index([uploadId])
 }
 
 model UploadHistory {
@@ -35,6 +38,7 @@ model UploadHistory {
   skipped    Int?
   errorCount Int?
   createdAt  DateTime @default(now())
+  rows       IngestionRow[]
 
   @@index([createdAt])
 }

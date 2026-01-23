@@ -38,6 +38,7 @@ export function UploadPageClient() {
   const [drafts, setDrafts] = React.useState<Record<string, DraftRow>>({});
   const [savingIds, setSavingIds] = React.useState<Record<string, boolean>>({});
   const [deletingIds, setDeletingIds] = React.useState<Record<string, boolean>>({});
+  const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
 
   const loadRows = React.useCallback(async () => {
     setRowsLoading(true);
@@ -108,7 +109,6 @@ export function UploadPageClient() {
   );
 
   const deleteRow = React.useCallback(async (id: string) => {
-    if (!window.confirm("Delete this row? This action cannot be undone.")) return;
     setDeletingIds((prev) => ({ ...prev, [id]: true }));
     try {
       const res = await fetch(`/api/ingestion/${id}`, { method: "DELETE" });
@@ -127,6 +127,7 @@ export function UploadPageClient() {
       setRowsError("Failed to delete row. Please try again.");
     } finally {
       setDeletingIds((prev) => ({ ...prev, [id]: false }));
+      setPendingDeleteId(null);
     }
   }, []);
 
@@ -328,7 +329,7 @@ export function UploadPageClient() {
                             <Button size="sm" variant="secondary" disabled={saving} onClick={() => updateRow(row)}>
                               {saving ? "Saving…" : "Save"}
                             </Button>
-                            <Button size="sm" variant="ghost" disabled={deleting} onClick={() => deleteRow(row.id)}>
+                            <Button size="sm" variant="ghost" disabled={deleting} onClick={() => setPendingDeleteId(row.id)}>
                               {deleting ? "Deleting…" : "Delete"}
                             </Button>
                           </div>
@@ -346,6 +347,26 @@ export function UploadPageClient() {
           </CardContent>
         </Card>
       </main>
+
+      {pendingDeleteId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setPendingDeleteId(null)} aria-hidden />
+          <Card className="relative w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Delete row?</CardTitle>
+              <CardDescription>This will permanently remove the selected row.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPendingDeleteId(null)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => deleteRow(pendingDeleteId)}>
+                Delete
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }

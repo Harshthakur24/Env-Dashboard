@@ -22,6 +22,27 @@ type HistoryItem = {
   note?: string | null;
 };
 
+type IngestionRow = {
+  id: string;
+  location: string;
+  visitDate: string;
+  composters: number;
+  wetWasteKg: number;
+  brownWasteKg: number;
+  leachateL: number;
+  harvestKg: number;
+};
+
+type DraftRow = {
+  location?: string;
+  visitDate?: string;
+  composters?: string | number;
+  wetWasteKg?: string | number;
+  brownWasteKg?: string | number;
+  leachateL?: string | number;
+  harvestKg?: string | number;
+};
+
 export function HistoryClient() {
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = React.useState(false);
@@ -29,6 +50,14 @@ export function HistoryClient() {
   const [noteDrafts, setNoteDrafts] = React.useState<Record<string, string>>({});
   const [savingIds, setSavingIds] = React.useState<Record<string, boolean>>({});
   const [deletingIds, setDeletingIds] = React.useState<Record<string, boolean>>({});
+  const [selectedHistoryId, setSelectedHistoryId] = React.useState<string | null>(null);
+  const [rows, setRows] = React.useState<IngestionRow[]>([]);
+  const [rowsLoading, setRowsLoading] = React.useState(false);
+  const [rowsError, setRowsError] = React.useState<string | null>(null);
+  const [rowDrafts, setRowDrafts] = React.useState<Record<string, DraftRow>>({});
+  const [rowSavingIds, setRowSavingIds] = React.useState<Record<string, boolean>>({});
+  const [rowDeletingIds, setRowDeletingIds] = React.useState<Record<string, boolean>>({});
+  const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
 
   const formatTime = React.useCallback((iso: string) => {
     return new Intl.DateTimeFormat(undefined, {
@@ -121,6 +150,93 @@ export function HistoryClient() {
       setHistoryError("Failed to delete history. Please try again.");
     } finally {
       setDeletingIds((prev) => ({ ...prev, [id]: false }));
+    }
+  }, []);
+
+  const loadRows = React.useCallback(async (historyId: string) => {
+    setRowsLoading(true);
+    setRowsError(null);
+    try {
+      const res = await fetch(`/api/history/${historyId}/rows`);
+      const json = (await res.json()) as { ok: true; rows: IngestionRow[] } | { ok: false; message: string };
+      if (!res.ok || !json.ok) {
+        setRowsError("message" in json ? json.message : "Failed to load rows.");
+        return;
+      }
+      setRows(json.rows);
+      setRowDrafts((prev) => {
+        const next = { ...prev };
+        json.rows.forEach((row) => {
+          next[row.id] = { ...row, visitDate: row.visitDate.slice(0, 10) };
+        });
+        return next;
+      });
+    } catch {
+      setRowsError("Failed to load rows. Check your server logs.");
+    } finally {
+      setRowsLoading(false);
+    }
+  }, []);
+
+  const updateRow = React.useCallback(
+    async (row: IngestionRow) => {
+      const draft = rowDrafts[row.id];
+      if (!draft) return;
+      setRowSavingIds((prev) => ({ ...prev, [row.id]: true }));
+      try {
+        const payload: Partial<IngestionRow> = {
+          location: draft.location ?? row.location,
+          visitDate: draft.visitDate ?? row.visitDate,
+          composters: Number(draft.composters ?? row.composters),
+          wetWasteKg: Number(draft.wetWasteKg ?? row.wetWasteKg),
+          brownWasteKg: Number(draft.brownWasteKg ?? row.brownWasteKg),
+          leachateL: Number(draft.leachateL ?? row.leachateL),
+          harvestKg: Number(draft.harvestKg ?? row.harvestKg),
+        };
+        const res = await fetch(`/api/ingestion/${row.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const json = (await res.json()) as { ok: true; row: IngestionRow } | { ok: false; message: string };
+        if (!res.ok || !json.ok) {
+          setRowsError("message" in json ? json.message : "Failed to update row.");
+          return;
+        }
+        setRows((prev) => prev.map((r) => (r.id === row.id ? json.row : r)));
+        setRowDrafts((prev) => ({
+          ...prev,
+          [row.id]: { ...json.row, visitDate: json.row.visitDate.slice(0, 10) },
+        }));
+      } catch {
+        setRowsError("Failed to update row. Please try again.");
+      } finally {
+        setRowSavingIds((prev) => ({ ...prev, [row.id]: false }));
+      }
+    },
+    [rowDrafts],
+  );
+
+  const deleteRow = React.useCallback(async (id: string) => {
+    setRowDeletingIds((prev) => ({ ...prev, [id]: true }));
+    try {
+      const res = await fetch(`/api/ingestion/${id}`, { method: "DELETE" });
+      const json = (await res.json()) as { ok: true } | { ok: false; message: string };
+      if (!res.ok || !json.ok) {
+        setRowsError("message" in json ? json.message : "Failed to delete row.");
+        return;
+      }
+      setRows((prev) => prev.filter((r) => r.id !== id));
+      setRowDrafts((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    } catch {
+      setRowsError("Failed to delete row. Please try again.");
+    } finally {
+      setRowDeletingIds((prev) => ({ ...prev, [id]: false }));
+      setPendingDeleteId(null);
     }
   }, []);
 
@@ -279,7 +395,14 @@ export function HistoryClient() {
                     const saving = savingIds[item.id];
                     const deleting = deletingIds[item.id];
                     return (
-                      <TableRow key={item.id} className="transition hover:bg-primary/5">
+                      <TableRow
+                        key={item.id}
+                        className={`transition hover:bg-primary/5 ${selectedHistoryId === item.id ? "bg-primary/5" : ""}`}
+                        onClick={() => {
+                          setSelectedHistoryId(item.id);
+                          void loadRows(item.id);
+                        }}
+                      >
                         <TableCell className="font-medium">{item.fileName}</TableCell>
                         <TableCell>{item.created}</TableCell>
                         <TableCell>{item.updated}</TableCell>
@@ -318,7 +441,169 @@ export function HistoryClient() {
             )}
           </CardContent>
         </Card>
+
+        {selectedHistoryId ? (
+          <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <CardHeader>
+              <CardTitle>Uploaded data</CardTitle>
+              <CardDescription>Table matches the Excel sheet layout. Click any cell to edit.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {rowsError ? (
+                <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {rowsError}
+                </div>
+              ) : null}
+              {rowsLoading ? (
+                <div className="rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">Loading rows…</div>
+              ) : rows.length ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name of the Project Location</TableHead>
+                      <TableHead>Date of Visit</TableHead>
+                      <TableHead>No. of composters</TableHead>
+                      <TableHead>Sum of Wet Waste (Kg)</TableHead>
+                      <TableHead>Sum of Brown Waste (Kg)</TableHead>
+                      <TableHead>Sum of Leachate (Litre)</TableHead>
+                      <TableHead>Sum of Harvest (Kg)</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((row) => {
+                      const draft = rowDrafts[row.id] ?? row;
+                      const saving = rowSavingIds[row.id];
+                      const deleting = rowDeletingIds[row.id];
+                      return (
+                        <TableRow key={row.id} className="transition hover:bg-primary/5">
+                          <TableCell>
+                            <Input
+                              value={draft.location ?? row.location}
+                              onChange={(e) =>
+                                setRowDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: { ...prev[row.id], location: e.target.value },
+                                }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="date"
+                              value={(draft.visitDate ?? row.visitDate).slice(0, 10)}
+                              onChange={(e) =>
+                                setRowDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: { ...prev[row.id], visitDate: e.target.value },
+                                }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={draft.composters ?? row.composters}
+                              onChange={(e) =>
+                                setRowDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: { ...prev[row.id], composters: e.target.value },
+                                }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={draft.wetWasteKg ?? row.wetWasteKg}
+                              onChange={(e) =>
+                                setRowDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: { ...prev[row.id], wetWasteKg: e.target.value },
+                                }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={draft.brownWasteKg ?? row.brownWasteKg}
+                              onChange={(e) =>
+                                setRowDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: { ...prev[row.id], brownWasteKg: e.target.value },
+                                }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={draft.leachateL ?? row.leachateL}
+                              onChange={(e) =>
+                                setRowDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: { ...prev[row.id], leachateL: e.target.value },
+                                }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              value={draft.harvestKg ?? row.harvestKg}
+                              onChange={(e) =>
+                                setRowDrafts((prev) => ({
+                                  ...prev,
+                                  [row.id]: { ...prev[row.id], harvestKg: e.target.value },
+                                }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button size="sm" variant="secondary" disabled={saving} onClick={() => updateRow(row)}>
+                                {saving ? "Saving…" : "Save"}
+                              </Button>
+                              <Button size="sm" variant="ghost" disabled={deleting} onClick={() => setPendingDeleteId(row.id)}>
+                                {deleting ? "Deleting…" : "Delete"}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">
+                  No rows found for this upload.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : null}
       </main>
+
+      {pendingDeleteId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setPendingDeleteId(null)} aria-hidden />
+          <Card className="relative w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Delete row?</CardTitle>
+              <CardDescription>This will permanently remove the selected row.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPendingDeleteId(null)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => deleteRow(pendingDeleteId)}>
+                Delete
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
     </div>
   );
 }
