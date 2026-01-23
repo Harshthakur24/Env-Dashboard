@@ -244,8 +244,8 @@ export function HistoryClient() {
   return (
     <div className="relative min-h-screen">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,var(--color-neutral-100),transparent_55%),radial-gradient(ellipse_at_bottom,var(--color-neutral-200),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_top,var(--color-neutral-900),transparent_55%),radial-gradient(ellipse_at_bottom,var(--color-neutral-800),transparent_60%)]" />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 md:px-8">
-        <div className="animate-in fade-in slide-in-from-top-2 flex items-start justify-between gap-4 duration-300">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 md:px-8 md:py-10">
+        <div className="animate-in fade-in slide-in-from-top-2 flex flex-col items-start justify-between gap-4 duration-300 md:flex-row md:items-center">
           <div className="flex flex-col gap-2">
             <div className="text-sm font-medium text-muted-foreground">Env Dashboard</div>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Upload history</h1>
@@ -253,14 +253,14 @@ export function HistoryClient() {
               Track every Excel ingestion with counts, errors, and notes. Updates are stored in PostgreSQL.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
             <Button asChild variant="outline">
               <Link href="/"> <ArrowLeftIcon className="size-4" /> Back to dashboard</Link>
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Card className="relative overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/10">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.16),transparent_55%)]" />
             <CardHeader className="pb-1">
@@ -288,12 +288,12 @@ export function HistoryClient() {
         </div>
 
         <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="grid gap-1">
               <CardTitle>Upload history</CardTitle>
               <CardDescription>Excel insertions stored in PostgreSQL with editable notes.</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button variant="ghost" size="sm" onClick={loadHistory} disabled={historyLoading}>
                 Refresh
               </Button>
@@ -338,7 +338,7 @@ export function HistoryClient() {
                 </TableBody>
               </Table>
             ) : history.length ? (
-              <Table>
+              <Table className="min-w-[900px] text-xs sm:text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead>File</TableHead>
@@ -424,10 +424,10 @@ export function HistoryClient() {
                   {rowsError}
                 </div>
               ) : null}
-              {rowsLoading ? (
+            {rowsLoading ? (
                 <div className="rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">Loading rows…</div>
               ) : rows.length ? (
-                <Table>
+                <Table className="min-w-[1100px] text-xs sm:text-sm">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name of the Project Location</TableHead>

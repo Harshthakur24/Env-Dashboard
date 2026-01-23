@@ -134,8 +134,8 @@ export function UploadPageClient() {
   return (
     <div className="relative min-h-screen">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,var(--color-neutral-100),transparent_55%),radial-gradient(ellipse_at_bottom,var(--color-neutral-200),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_top,var(--color-neutral-900),transparent_55%),radial-gradient(ellipse_at_bottom,var(--color-neutral-800),transparent_60%)]" />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 md:px-8">
-        <div className="animate-in fade-in slide-in-from-top-2 flex items-start justify-between gap-4 duration-300">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 md:px-8 md:py-10">
+        <div className="animate-in fade-in slide-in-from-top-2 flex flex-col items-start justify-between gap-4 duration-300 md:flex-row md:items-center">
           <div className="flex flex-col gap-2">
             <div className="text-sm font-medium text-muted-foreground">Env Dashboard</div>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Insert Excel sheet</h1>
@@ -143,7 +143,7 @@ export function UploadPageClient() {
               Upload, validate, and merge data by Location + Visit Date. All uploads are tracked in history.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
             <Button asChild variant="outline">
               <Link href="/">Back to dashboard</Link>
             </Button>
@@ -203,7 +203,7 @@ export function UploadPageClient() {
         </div>
 
         <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="grid gap-1">
               <CardTitle>All data</CardTitle>
               <CardDescription>Edit any cell and save, or delete rows instantly.</CardDescription>
@@ -221,7 +221,7 @@ export function UploadPageClient() {
             {rowsLoading ? (
               <div className="rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground">Loading rows…</div>
             ) : rows.length ? (
-              <Table>
+              <Table className="min-w-[900px] text-xs sm:text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Location</TableHead>

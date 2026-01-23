@@ -12,8 +12,8 @@ export function HomeClient() {
   return (
     <div className="relative min-h-screen">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,var(--color-neutral-100),transparent_55%),radial-gradient(ellipse_at_bottom,var(--color-neutral-200),transparent_60%)] dark:bg-[radial-gradient(ellipse_at_top,var(--color-neutral-900),transparent_55%),radial-gradient(ellipse_at_bottom,var(--color-neutral-800),transparent_60%)]" />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-10 md:px-8">
-        <div className="animate-in fade-in slide-in-from-top-2 flex items-start justify-between gap-4 duration-300">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 md:px-8 md:py-10">
+        <div className="animate-in fade-in slide-in-from-top-2 flex flex-col items-start justify-between gap-4 duration-300 md:flex-row md:items-center">
           <div className="flex flex-col gap-2">
             <div className="text-sm font-medium text-muted-foreground">Env Dashboard</div>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Dashboard overview</h1>
@@ -21,7 +21,7 @@ export function HomeClient() {
               Track composting performance, waste flows, and daily efficiency. Uploads instantly refresh the charts.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
             <Button asChild className="shadow-lg">
               <Link href="/upload">Insert Excel sheet</Link>
             </Button>
