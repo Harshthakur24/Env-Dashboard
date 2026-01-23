@@ -19,6 +19,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -308,6 +309,19 @@ export function DashboardClient({
               <Label>To</Label>
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setLocation("all");
+                setFrom("");
+                setTo("");
+              }}
+            >
+              Clear filters
+            </Button>
           </div>
           <div className="text-sm text-muted-foreground">
             Showing <span className="font-medium text-foreground">{totals.records}</span> records

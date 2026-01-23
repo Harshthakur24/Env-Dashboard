@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -22,4 +23,18 @@ model IngestionRow {
   @@unique([location, visitDate])
   @@index([visitDate])
   @@index([location])
+}
+
+model UploadHistory {
+  id         String   @id @default(cuid())
+  fileName   String
+  note       String?
+  created    Int
+  updated    Int
+  total      Int
+  skipped    Int?
+  errorCount Int?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }

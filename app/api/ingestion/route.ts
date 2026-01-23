@@ -128,6 +128,23 @@ export async function POST(req: Request) {
     return jsonError(databaseErrorMessage(), 500);
   }
 
+  let history: { id: string; createdAt: Date } | null = null;
+  try {
+    history = await db.uploadHistory.create({
+      data: {
+        fileName: file.name,
+        created,
+        updated,
+        total: created + updated,
+        skipped: parsed.errors.length || 0,
+        errorCount: parsed.errors.length || 0,
+      },
+      select: { id: true, createdAt: true },
+    });
+  } catch {
+    // If history write fails, still return ingestion success.
+  }
+
   return NextResponse.json({
     ok: true,
     created,
@@ -135,6 +152,7 @@ export async function POST(req: Request) {
     total: created + updated,
     skipped: parsed.errors.length,
     errors: parsed.errors,
+    history,
   });
 }
 
