@@ -3,9 +3,8 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { FileUpload } from "@/components/upload/file-upload";
 
 type UploadResult =
   | {
@@ -34,14 +33,7 @@ export function UploadCard({ onUploaded }: { onUploaded?: (event: UploadEvent) =
   const [file, setFile] = React.useState<File | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [result, setResult] = React.useState<UploadResult | null>(null);
-  const [dragActive, setDragActive] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const fileSize = React.useMemo(() => {
-    if (!file) return "";
-    const kb = file.size / 1024;
-    if (kb < 1024) return `${kb.toFixed(1)} KB`;
-    return `${(kb / 1024).toFixed(2)} MB`;
-  }, [file]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,63 +78,15 @@ export function UploadCard({ onUploaded }: { onUploaded?: (event: UploadEvent) =
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="file">Excel file</Label>
-            <label
-              htmlFor="file"
-              className={`group relative flex min-h-[180px] cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-8 text-center transition ${dragActive
-                ? "border-primary/80 bg-primary/10"
-                : "border-border/70 bg-muted/30 hover:border-primary/60 hover:bg-muted/40"
-                }`}
-              onDragEnter={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setDragActive(true);
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setDragActive(false);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setDragActive(false);
-                const dropped = e.dataTransfer.files?.[0];
-                if (dropped) {
-                  setFile(dropped);
-                  if (inputRef.current) inputRef.current.files = e.dataTransfer.files;
-                }
-              }}
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary shadow-inner">
-                <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M12 16V6" />
-                  <path d="M8 10l4-4 4 4" />
-                  <path d="M20 16.5a4.5 4.5 0 0 0-4.5-4.5H14" />
-                  <path d="M4 16.5A4.5 4.5 0 0 1 8.5 12H10" />
-                </svg>
-              </div>
-              <div className="text-base font-semibold text-foreground">
-                Drop your file here, or{" "}
-                <span className="text-primary underline-offset-4 group-hover:underline">browse</span>
-              </div>
-              <div className="text-sm text-muted-foreground">Supports: .xlsx, .xls</div>
-              <Input
-                ref={inputRef}
-                id="file"
-                type="file"
-                accept=".xlsx,.xls"
-                className="sr-only"
-                disabled={loading}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
-          </div>
+          <FileUpload
+            ref={inputRef}
+            label="Excel file"
+            name="file"
+            required
+            accept=".xlsx,.xls"
+            value={file}
+            onChange={setFile}
+          />
           <div className="flex items-center gap-3">
             <Button type="submit" disabled={!file || loading} className="min-w-32 shadow-md shadow-primary/20">
               {loading ? (
@@ -167,12 +111,6 @@ export function UploadCard({ onUploaded }: { onUploaded?: (event: UploadEvent) =
                 Clear
               </Button>
             ) : null}
-            {file ? (
-              <Badge variant="secondary" className="max-w-full truncate">
-                {file.name}
-              </Badge>
-            ) : null}
-            {fileSize ? <Badge variant="outline">{fileSize}</Badge> : null}
           </div>
 
           {loading ? (
