@@ -58,6 +58,7 @@ export function HistoryClient() {
   const [rowSavingIds, setRowSavingIds] = React.useState<Record<string, boolean>>({});
   const [rowDeletingIds, setRowDeletingIds] = React.useState<Record<string, boolean>>({});
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null);
+  const [pendingHistoryDeleteId, setPendingHistoryDeleteId] = React.useState<string | null>(null);
 
   const formatTime = React.useCallback((iso: string) => {
     return new Intl.DateTimeFormat(undefined, {
@@ -150,6 +151,7 @@ export function HistoryClient() {
       setHistoryError("Failed to delete history. Please try again.");
     } finally {
       setDeletingIds((prev) => ({ ...prev, [id]: false }));
+      setPendingHistoryDeleteId(null);
     }
   }, []);
 
@@ -425,7 +427,15 @@ export function HistoryClient() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">{formatTime(item.createdAt)}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm" disabled={deleting} onClick={() => deleteHistory(item.id)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={deleting}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPendingHistoryDeleteId(item.id);
+                            }}
+                          >
                             {deleting ? "Deleting…" : "Delete"}
                           </Button>
                         </TableCell>
@@ -598,6 +608,26 @@ export function HistoryClient() {
                 Cancel
               </Button>
               <Button variant="destructive" onClick={() => deleteRow(pendingDeleteId)}>
+                Delete
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {pendingHistoryDeleteId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setPendingHistoryDeleteId(null)} aria-hidden />
+          <Card className="relative w-full max-w-md">
+            <CardHeader>
+              <CardTitle>Delete upload history?</CardTitle>
+              <CardDescription>This will remove the history entry. Uploaded rows stay in the database.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPendingHistoryDeleteId(null)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => deleteHistory(pendingHistoryDeleteId)}>
                 Delete
               </Button>
             </CardContent>
