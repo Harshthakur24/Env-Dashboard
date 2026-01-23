@@ -70,6 +70,23 @@ function groupByDate(rows: Row[]) {
     }));
 }
 
+function groupByMonth(rows: Row[]) {
+  const m = new Map<string, Row[]>();
+  for (const r of rows) {
+    const d = r.visitDate;
+    const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const arr = m.get(k);
+    if (arr) arr.push(r);
+    else m.set(k, [r]);
+  }
+  return [...m.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, rs]) => ({
+      month,
+      co2eqKg: sum(rs, "wetWasteKg") + sum(rs, "brownWasteKg"),
+    }));
+}
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
@@ -118,6 +135,7 @@ export function DashboardClient({
   }, [rows, location, from, to]);
 
   const daily = React.useMemo(() => groupByDate(filtered), [filtered]);
+  const monthlyCo2 = React.useMemo(() => groupByMonth(filtered), [filtered]);
 
   const totals = React.useMemo(
     () => ({
@@ -270,23 +288,30 @@ export function DashboardClient({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Wet Waste (Kg)</CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold tabular-nums">{totals.wetWasteKg.toLocaleString()}</CardContent>
+          <CardContent className="text-3xl font-semibold tabular-nums">
+            {loading ? <div className="h-8 w-28 animate-pulse rounded-md bg-muted/40" /> : totals.wetWasteKg.toLocaleString()}
+          </CardContent>
         </Card>
         <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Brown Waste (Kg)</CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold tabular-nums">{totals.brownWasteKg.toLocaleString()}</CardContent>
+          <CardContent className="text-3xl font-semibold tabular-nums">
+            {loading ? <div className="h-8 w-28 animate-pulse rounded-md bg-muted/40" /> : totals.brownWasteKg.toLocaleString()}
+          </CardContent>
         </Card>
         <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Harvest (Kg)</CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-semibold tabular-nums">{totals.harvestKg.toLocaleString()}</CardContent>
+          <CardContent className="text-3xl font-semibold tabular-nums">
+            {loading ? <div className="h-8 w-24 animate-pulse rounded-md bg-muted/40" /> : totals.harvestKg.toLocaleString()}
+          </CardContent>
         </Card>
       </div>
 
-      <Card>
+      <Card className="relative overflow-hidden border-border/60">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_55%),radial-gradient(circle_at_top_right,rgba(168,85,247,0.18),transparent_55%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.18),transparent_55%)]" />
         <CardHeader className="gap-4">
           <CardTitle>Filters</CardTitle>
           <div className="grid gap-4 md:grid-cols-3">
@@ -328,14 +353,20 @@ export function DashboardClient({
             </Button>
           </div>
           <div className="text-sm text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{totals.records}</span> records
-            {daily.length ? (
+            {loading ? (
+              <div className="h-4 w-64 animate-pulse rounded-md bg-muted/40" />
+            ) : (
               <>
-                {" "}
-                from <span className="font-medium text-foreground">{daily[0].date}</span> to{" "}
-                <span className="font-medium text-foreground">{daily[daily.length - 1].date}</span>
+                Showing <span className="font-medium text-foreground">{totals.records}</span> records
+                {daily.length ? (
+                  <>
+                    {" "}
+                    from <span className="font-medium text-foreground">{daily[0].date}</span> to{" "}
+                    <span className="font-medium text-foreground">{daily[daily.length - 1].date}</span>
+                  </>
+                ) : null}
               </>
-            ) : null}
+            )}
           </div>
         </CardHeader>
       </Card>
@@ -429,6 +460,36 @@ export function DashboardClient({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly CO2e reduction (Kg)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted/40" />
+          ) : (
+            <ChartContainer
+              className="h-[320px] w-full"
+              config={{
+                co2eq: { label: "CO2e (Kg)", color: "var(--chart-3)" },
+              }}
+            >
+              <BarChart data={monthlyCo2} margin={{ left: 8, right: 8, top: 8 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="month" tickMargin={8} />
+                <YAxis width={48} />
+                <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                <Bar dataKey="co2eqKg" name="co2eq" fill="var(--color-co2eq)" radius={[6, 6, 0, 0]} />
+                <ChartLegend content={<ChartLegendContent />} />
+              </BarChart>
+            </ChartContainer>
+          )}
+          <div className="mt-2 text-xs text-muted-foreground">
+            Conversion factor: 1 kg food waste = 1 kg CO2e reduction.
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

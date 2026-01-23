@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { UploadCard } from "@/components/upload/upload-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -261,70 +260,31 @@ export function HistoryClient() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="grid gap-4">
-            <Card className="relative overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/10">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_45%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.1),transparent_55%)]" />
-              <CardHeader>
-                <CardTitle>Insert Excel sheet</CardTitle>
-                <CardDescription>We validate and merge by Location + Visit Date.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <UploadCard
-                  onUploaded={(event) => {
-                    const historyId = event.historyId;
-                    const createdAt = event.createdAt;
-                    if (historyId && createdAt) {
-                      setHistory((prev) => [
-                        {
-                          id: historyId,
-                          createdAt,
-                          fileName: event.fileName,
-                          created: event.created,
-                          updated: event.updated,
-                          total: event.total,
-                          skipped: event.skipped ?? 0,
-                          errorCount: event.errorCount ?? 0,
-                          note: null,
-                        },
-                        ...prev,
-                      ]);
-                      setNoteDrafts((prev) => ({ ...prev, [historyId]: "" }));
-                    } else {
-                      void loadHistory();
-                    }
-                  }}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-4">
-            <Card className="relative overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/10">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="relative overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/10">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.16),transparent_55%)]" />
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Total uploads</CardTitle>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs text-muted-foreground">Total uploads</CardTitle>
               </CardHeader>
-              <CardContent className="text-3xl font-semibold">{historyTotals.uploads}</CardContent>
-            </Card>
-            <Card className="relative overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/10">
+            <CardContent className="text-2xl font-semibold">{historyTotals.uploads}</CardContent>
+          </Card>
+          <Card className="relative overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/10">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.18),transparent_55%)]" />
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Rows processed</CardTitle>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs text-muted-foreground">Rows processed</CardTitle>
               </CardHeader>
-              <CardContent className="text-3xl font-semibold">{historyTotals.rows.toLocaleString()}</CardContent>
+            <CardContent className="text-2xl font-semibold">{historyTotals.rows.toLocaleString()}</CardContent>
             </Card>
-            <Card className="relative overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/10">
+          <Card className="relative overflow-hidden border-border/60 bg-card/80 shadow-lg shadow-black/10">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.18),transparent_55%)]" />
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Last upload</CardTitle>
+            <CardHeader className="pb-1">
+              <CardTitle className="text-xs text-muted-foreground">Last upload</CardTitle>
               </CardHeader>
-              <CardContent className="text-xl font-semibold">{lastUpload}</CardContent>
-              <div className="px-6 pb-6 text-xs text-muted-foreground">
+            <CardContent className="text-lg font-semibold">{lastUpload}</CardContent>
+            <div className="px-6 pb-4 text-xs text-muted-foreground">
                 Inserted {historyTotals.inserted.toLocaleString()} • Updated {historyTotals.updated.toLocaleString()}
               </div>
             </Card>
-          </div>
         </div>
 
         <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
