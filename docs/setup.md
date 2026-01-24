@@ -5,7 +5,7 @@
 Create a `.env.local` file in the project root:
 
 ```bash
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/env_dashboard?schema=public"
+DATABASE_URL="postgresql://postgres:your_password@localhost:5432/env_dashboard?schema=public"
 ```
 
 Tip: you can copy `env.example` to `.env.local` and then adjust the URL.

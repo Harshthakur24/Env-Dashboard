@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ApiRow, Row } from "./types";  // <- import the types
 import {
   Area,
   AreaChart,
@@ -18,6 +19,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+// ... rest of imports
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -26,18 +29,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatISODate } from "@/lib/format";
 
-type ApiRow = {
-  id: string;
-  location: string;
-  visitDate: string;
-  composters: number;
-  wetWasteKg: number;
-  brownWasteKg: number;
-  leachateL: number;
-  harvestKg: number;
-};
+import AlertsPanel from "@/components/dashboard/alerts-panel";
 
-type Row = Omit<ApiRow, "visitDate"> & { visitDate: Date };
+
 
 type ScatterPoint = {
   x: number; // composters
@@ -49,6 +43,15 @@ type ScatterPoint = {
 
 function sum(rows: Row[], key: keyof Pick<Row, "wetWasteKg" | "brownWasteKg" | "leachateL" | "harvestKg">) {
   return rows.reduce((acc, r) => acc + (r[key] ?? 0), 0);
+}
+function formatMonthLabel(month: string) {
+  const [year, m] = month.split("-");
+  const date = new Date(Number(year), Number(m) - 1);
+
+  return date.toLocaleString("en-IN", {
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function groupByDate(rows: Row[]) {
@@ -96,13 +99,8 @@ function pct(num: number, den: number) {
   return (num / den) * 100;
 }
 
-export function DashboardClient({
-  initialRows,
-  refreshSignal,
-}: {
-  initialRows: ApiRow[];
-  refreshSignal?: number;
-}) {
+export function DashboardClient({ initialRows, refreshSignal }: { initialRows: ApiRow[]; refreshSignal?: number }) {
+  
   const [rows, setRows] = React.useState<Row[]>(
     initialRows.map((r) => ({ ...r, visitDate: new Date(r.visitDate) })),
   );
@@ -116,7 +114,7 @@ export function DashboardClient({
     const s = new Set(rows.map((r) => r.location));
     return ["all", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
   }, [rows]);
-
+  
   const filtered = React.useMemo(() => {
     return rows.filter((r) => {
       if (location !== "all" && r.location !== location) return false;
@@ -371,6 +369,10 @@ export function DashboardClient({
         </CardHeader>
       </Card>
 
+      <div className="mb-4">   {/* add margin-bottom to separate from next cards */}
+        <AlertsPanel rows={filtered} />
+      </div>
+      
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -465,6 +467,7 @@ export function DashboardClient({
         <CardHeader>
           <CardTitle>Monthly CO2e reduction (Kg)</CardTitle>
         </CardHeader>
+
         <CardContent>
           {loading ? (
             <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted/40" />
@@ -472,24 +475,58 @@ export function DashboardClient({
             <ChartContainer
               className="h-[320px] w-full"
               config={{
-                co2eq: { label: "CO2e (Kg)", color: "var(--chart-3)" },
+                co2eq: { label: "CO2e (Kg)", color: "#22c55e" },
               }}
             >
-              <BarChart data={monthlyCo2} margin={{ left: 8, right: 8, top: 8 }}>
+              <ComposedChart data={monthlyCo2} margin={{ left: 8, right: 8, top: 8 }}>
                 <CartesianGrid vertical={false} />
-                <XAxis dataKey="month" tickMargin={8} />
-                <YAxis width={48} />
+
+                <XAxis
+                  dataKey="month"
+                  tickMargin={8}
+                  tickFormatter={formatMonthLabel}
+                />
+
+                <YAxis
+                  width={48}
+                  tickCount={Math.ceil(
+                    Math.max(...monthlyCo2.map((d) => d.co2eqKg), 0) / 200
+                  )}
+                  tickFormatter={(v) => v.toLocaleString()}
+                />
+
                 <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
-                <Bar dataKey="co2eqKg" name="co2eq" fill="var(--color-co2eq)" radius={[6, 6, 0, 0]} />
+
+                {/* GREEN BARS */}
+                <Bar
+                  dataKey="co2eqKg"
+                  name="co2eq"
+                  fill="#22c55e"
+                  radius={[6, 6, 0, 0]}
+                />
+
+                {/* CONNECTING LINE */}
+                <Line
+                  type="monotone"
+                  dataKey="co2eqKg"
+                  stroke="#16a34a"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+
                 <ChartLegend content={<ChartLegendContent />} />
-              </BarChart>
+              </ComposedChart>
             </ChartContainer>
           )}
+
           <div className="mt-2 text-xs text-muted-foreground">
             Conversion factor: 1 kg food waste = 1 kg CO2e reduction.
           </div>
         </CardContent>
       </Card>
+
+
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

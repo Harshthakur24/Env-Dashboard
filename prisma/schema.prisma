@@ -8,7 +8,7 @@ datasource db {
 }
 
 model IngestionRow {
-  id           String   @id @default(cuid())
+  id           String         @id @default(cuid())
   location     String
   visitDate    DateTime
   composters   Int
@@ -16,11 +16,10 @@ model IngestionRow {
   brownWasteKg Float
   leachateL    Float
   harvestKg    Float
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   uploadId     String?
   upload       UploadHistory? @relation(fields: [uploadId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   @@unique([location, visitDate])
   @@index([visitDate])
@@ -29,7 +28,7 @@ model IngestionRow {
 }
 
 model UploadHistory {
-  id         String   @id @default(cuid())
+  id         String         @id @default(cuid())
   fileName   String
   note       String?
   created    Int
@@ -37,7 +36,7 @@ model UploadHistory {
   total      Int
   skipped    Int?
   errorCount Int?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime       @default(now())
   rows       IngestionRow[]
 
   @@index([createdAt])
