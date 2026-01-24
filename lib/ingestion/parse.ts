@@ -31,7 +31,9 @@ function parseNumber(value: unknown): number | null {
   return n;
 }
 
-function parseDate(value: unknown): Date | null {
+type DatePreference = "dmy" | "mdy";
+
+function parseDate(value: unknown, preference: DatePreference): Date | null {
   if (value instanceof Date && !Number.isNaN(value.valueOf())) return value;
 
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -70,32 +72,29 @@ function parseDate(value: unknown): Date | null {
     const rawYear = Number(dmy[3]);
     const yyyy = rawYear < 100 ? 2000 + rawYear : rawYear;
 
-    // Try dd/mm/yyyy (common in many locales)
     const dd1 = Number(dmy[1]);
     const mm1 = Number(dmy[2]);
     const d1 = new Date(Date.UTC(yyyy, mm1 - 1, dd1));
-    if (
+    const d1Valid =
       !Number.isNaN(d1.valueOf()) &&
       d1.getUTCFullYear() === yyyy &&
       d1.getUTCMonth() === mm1 - 1 &&
-      d1.getUTCDate() === dd1
-    ) {
-      return d1;
-    }
+      d1.getUTCDate() === dd1;
 
-    // Try mm/dd/yyyy (US-style) e.g. 10/13/25
     const mm2 = Number(dmy[1]);
     const dd2 = Number(dmy[2]);
     const d2 = new Date(Date.UTC(yyyy, mm2 - 1, dd2));
-    if (
+    const d2Valid =
       !Number.isNaN(d2.valueOf()) &&
       d2.getUTCFullYear() === yyyy &&
       d2.getUTCMonth() === mm2 - 1 &&
-      d2.getUTCDate() === dd2
-    ) {
-      return d2;
-    }
+      d2.getUTCDate() === dd2;
 
+    if (d1Valid && d2Valid) {
+      return preference === "mdy" ? d2 : d1;
+    }
+    if (d1Valid) return d1;
+    if (d2Valid) return d2;
     return null;
   }
 
@@ -165,6 +164,23 @@ export function parseIngestionWorkbook(buffer: ArrayBuffer): ParseResult {
   const parsed: IngestionRowInput[] = [];
   const errors: ParseError[] = [];
 
+  // Detect whether the sheet is using d-m-y or m-d-y in strings.
+  let dmyScore = 0;
+  let mdyScore = 0;
+  const dateHeader = headerMap.get("Date of Visit")!;
+  for (const r of rows) {
+    const v = r[dateHeader];
+    if (typeof v !== "string") continue;
+    const s = String(v ?? "").trim();
+    const m = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/.exec(s);
+    if (!m) continue;
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (a > 12 && b >= 1 && b <= 12) dmyScore += 1;
+    else if (b > 12 && a >= 1 && a <= 12) mdyScore += 1;
+  }
+  const datePreference: DatePreference = mdyScore > dmyScore ? "mdy" : "dmy";
+
   rows.forEach((r, idx) => {
     const dataRow = idx + 1;
 
@@ -187,7 +203,7 @@ export function parseIngestionWorkbook(buffer: ArrayBuffer): ParseResult {
       isBlankCell(harvestRaw);
     if (isBlankRow) return;
 
-    const visitDate = parseDate(visitDateRaw);
+    const visitDate = parseDate(visitDateRaw, datePreference);
     const composters = parseNumber(compostersRaw);
     const wetWasteKg = parseNumber(wetWasteRaw);
     const brownWasteKg = parseNumber(brownWasteRaw);

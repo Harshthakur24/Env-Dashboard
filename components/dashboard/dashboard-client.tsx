@@ -100,7 +100,7 @@ function pct(num: number, den: number) {
 }
 
 export function DashboardClient({ initialRows, refreshSignal }: { initialRows: ApiRow[]; refreshSignal?: number }) {
-  
+
   const [rows, setRows] = React.useState<Row[]>(
     initialRows.map((r) => ({ ...r, visitDate: new Date(r.visitDate) })),
   );
@@ -109,12 +109,13 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
   const [location, setLocation] = React.useState<string>("all");
   const [from, setFrom] = React.useState<string>("");
   const [to, setTo] = React.useState<string>("");
+  const [co2View, setCo2View] = React.useState<"bar" | "line" | "hybrid">("hybrid");
 
   const locations = React.useMemo(() => {
     const s = new Set(rows.map((r) => r.location));
     return ["all", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
   }, [rows]);
-  
+
   const filtered = React.useMemo(() => {
     return rows.filter((r) => {
       if (location !== "all" && r.location !== location) return false;
@@ -372,7 +373,7 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
       <div className="mb-4">   {/* add margin-bottom to separate from next cards */}
         <AlertsPanel rows={filtered} />
       </div>
-      
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -464,8 +465,34 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Monthly CO2e reduction (Kg)</CardTitle>
+          <div className="flex w-full items-center justify-start gap-2 sm:w-auto sm:justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant={co2View === "bar" ? "default" : "outline"}
+              onClick={() => setCo2View("bar")}
+            >
+              Bar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={co2View === "line" ? "default" : "outline"}
+              onClick={() => setCo2View("line")}
+            >
+              Line
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={co2View === "hybrid" ? "default" : "outline"}
+              onClick={() => setCo2View("hybrid")}
+            >
+              Hybrid
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent>
@@ -495,27 +522,29 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
                   tickFormatter={(v) => v.toLocaleString()}
                 />
 
-                <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
+                <ChartTooltip content={<ChartTooltipContent indicator="dot" dedupeItems />} />
 
-                {/* GREEN BARS */}
-                <Bar
-                  dataKey="co2eqKg"
-                  name="co2eq"
-                  fill="#22c55e"
-                  radius={[6, 6, 0, 0]}
-                />
+                {co2View !== "line" ? (
+                  <Bar
+                    dataKey="co2eqKg"
+                    name="co2eq"
+                    fill="#22c55e"
+                    radius={[6, 6, 0, 0]}
+                  />
+                ) : null}
 
-                {/* CONNECTING LINE */}
-                <Line
-                  type="monotone"
-                  dataKey="co2eqKg"
-                  stroke="#16a34a"
-                  strokeWidth={3}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
+                {co2View !== "bar" ? (
+                  <Line
+                    type="monotone"
+                    dataKey="co2eqKg"
+                    stroke="#16a34a"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                ) : null}
 
-                <ChartLegend content={<ChartLegendContent />} />
+                <ChartLegend content={<ChartLegendContent dedupeItems />} />
               </ComposedChart>
             </ChartContainer>
           )}

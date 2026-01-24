@@ -111,6 +111,7 @@ function ChartTooltipContent({
   indicator = "dot",
   hideLabel = false,
   hideIndicator = false,
+  dedupeItems = false,
   label,
   labelFormatter,
   labelClassName,
@@ -123,6 +124,7 @@ function ChartTooltipContent({
     hideLabel?: boolean
     hideIndicator?: boolean
     indicator?: "line" | "dot" | "dashed"
+    dedupeItems?: boolean
     nameKey?: string
     labelKey?: string
   }) {
@@ -169,17 +171,18 @@ function ChartTooltipContent({
   }
 
   const nestLabel = payload.length === 1 && indicator !== "dot"
+  const tooltipItems = dedupeItems ? dedupePayload(payload) : payload
 
   return (
     <div
       className={cn(
-        "border-border/50 bg-background grid min-w-[8rem] items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl",
+        "border-border/50 bg-background grid min-w-32 items-start gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl",
         className
       )}
     >
       {!nestLabel ? tooltipLabel : null}
       <div className="grid gap-1.5">
-        {payload
+        {tooltipItems
           .filter((item) => item.type !== "none")
           .map((item, index) => {
             const key = `${nameKey || item.name || item.dataKey || "value"}`
@@ -258,16 +261,20 @@ function ChartLegendContent({
   payload,
   verticalAlign = "bottom",
   nameKey,
+  dedupeItems = false,
 }: React.ComponentProps<"div"> &
   Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
     hideIcon?: boolean
     nameKey?: string
+    dedupeItems?: boolean
   }) {
   const { config } = useChart()
 
   if (!payload?.length) {
     return null
   }
+
+  const legendItems = dedupeItems ? dedupePayload(payload) : payload
 
   return (
     <div
@@ -277,7 +284,7 @@ function ChartLegendContent({
         className
       )}
     >
-      {payload
+      {legendItems
         .filter((item) => item.type !== "none")
         .map((item) => {
           const key = `${nameKey || item.dataKey || "value"}`
@@ -345,6 +352,23 @@ function getPayloadConfigFromPayload(
   return configLabelKey in config
     ? config[configLabelKey]
     : config[key as keyof typeof config]
+}
+
+function dedupePayload<T>(payload: T[]) {
+  const seen = new Set<string>()
+  const out: T[] = []
+  for (const item of payload) {
+    const itemAny = item as {
+      dataKey?: unknown
+      name?: unknown
+      value?: unknown
+    }
+    const key = String(itemAny.dataKey ?? itemAny.name ?? itemAny.value ?? "")
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    out.push(item)
+  }
+  return out
 }
 
 export {
