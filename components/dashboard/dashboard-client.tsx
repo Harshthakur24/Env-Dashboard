@@ -110,6 +110,16 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
   const [from, setFrom] = React.useState<string>("");
   const [to, setTo] = React.useState<string>("");
   const [co2View, setCo2View] = React.useState<"bar" | "line" | "hybrid">("hybrid");
+  const [sdgCountries, setSdgCountries] = React.useState<{ code: number; name: string }[]>([]);
+  const [sdgCountryCode, setSdgCountryCode] = React.useState<string>("356");
+  const [sdgYears, setSdgYears] = React.useState<number[]>([]);
+  const [sdgYear, setSdgYear] = React.useState<string>("");
+  const [sdgSeries, setSdgSeries] = React.useState<{ year: number; index: number }[]>([]);
+  const [sdgContributions, setSdgContributions] = React.useState<
+    { id: string; name: string; contribution: number; performance: number; schemeSuccess: number }[]
+  >([]);
+  const [sdgLoading, setSdgLoading] = React.useState(false);
+  const [sdgError, setSdgError] = React.useState<string | null>(null);
 
   const locations = React.useMemo(() => {
     const s = new Set(rows.map((r) => r.location));
@@ -226,6 +236,63 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
       };
     });
   }, [daily]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadSdgIndex() {
+      setSdgLoading(true);
+      setSdgError(null);
+      try {
+        const sp = new URLSearchParams();
+        sp.set("countryCode", sdgCountryCode);
+        if (sdgYear) sp.set("year", sdgYear);
+        const res = await fetch(`/api/sdg-index?${sp.toString()}`);
+        const json = (await res.json()) as {
+          ok: boolean;
+          message?: string;
+          countries: { code: number; name: string }[];
+          years: number[];
+          series: { year: number; index: number }[];
+          contributions: { performance: number; schemeSuccess: number; weightedScore: number; name: string; id: string }[];
+        };
+
+        if (!res.ok || !json.ok) {
+          throw new Error(json.message || "Failed to load SDG index.");
+        }
+
+        if (cancelled) return;
+        setSdgCountries(json.countries);
+        setSdgYears(json.years);
+        if (!sdgYear && json.years.length) {
+          setSdgYear(String(json.years[json.years.length - 1]));
+        }
+        setSdgSeries(json.series);
+        setSdgContributions(
+          json.contributions
+            .map((item) => ({
+              id: item.id,
+              name: item.name,
+              contribution: Number(item.weightedScore.toFixed(2)),
+              performance: Number(item.performance.toFixed(1)),
+              schemeSuccess: Number((item.schemeSuccess * 100).toFixed(0)),
+            }))
+            .sort((a, b) => b.contribution - a.contribution),
+        );
+      } catch (error) {
+        if (!cancelled) {
+          setSdgError(error instanceof Error ? error.message : "Failed to load SDG index.");
+        }
+      } finally {
+        if (!cancelled) setSdgLoading(false);
+      }
+    }
+
+    void loadSdgIndex();
+    return () => {
+      cancelled = true;
+    };
+  }, [sdgCountryCode, sdgYear]);
 
   const scatter = React.useMemo<ScatterPoint[]>(() => {
     const points = filtered
@@ -376,6 +443,150 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
+          <CardHeader className="gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Responsible Sustainability Transition Index</CardTitle>
+              <div className="flex items-center gap-2">
+                <Select value={sdgCountryCode} onValueChange={setSdgCountryCode}>
+                  <SelectTrigger className="h-8 w-[180px]">
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sdgCountries.map((country) => (
+                      <SelectItem key={country.code} value={String(country.code)}>
+                        {country.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={sdgYear} onValueChange={setSdgYear}>
+                  <SelectTrigger className="h-8 w-[110px]">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sdgYears.map((year) => (
+                      <SelectItem key={year} value={String(year)}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Index = sum(weight * indicator score * scheme success) / total weight. Data source: UNSD SDG API.
+            </div>
+          </CardHeader>
+          <CardContent>
+            {sdgLoading ? (
+              <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : sdgError ? (
+              <div className="text-sm text-destructive">{sdgError}</div>
+            ) : (
+              <>
+                <ChartContainer
+                  className="h-[320px] w-full"
+                  config={{
+                    index: { label: "RSTI score", color: "var(--chart-3)" },
+                  }}
+                >
+                  <LineChart data={sdgSeries} margin={{ left: 8, right: 8, top: 8 }}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="year" tickMargin={8} />
+                    <YAxis width={44} domain={[0, 100]} tickFormatter={(v) => `${v}`} />
+                    <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                    <Line
+                      type="monotone"
+                      dataKey="index"
+                      name="index"
+                      stroke="var(--color-index)"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Showing {sdgSeries.length} yearly points for the selected geography.
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Indicator contributions ({sdgYear})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {sdgLoading ? (
+              <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted/40" />
+            ) : sdgError ? (
+              <div className="text-sm text-destructive">{sdgError}</div>
+            ) : (
+              <>
+                <ChartContainer
+                  className="h-[320px] w-full"
+                  config={{
+                    contribution: { label: "Index points", color: "var(--chart-4)" },
+                  }}
+                >
+                  <BarChart data={sdgContributions} layout="vertical" margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                    <CartesianGrid horizontal={false} />
+                    <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}`} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={140}
+                      tickFormatter={(v) => (String(v).length > 18 ? `${String(v).slice(0, 18)}…` : String(v))}
+                    />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          indicator="dot"
+                          formatter={(value, _name, _item, _idx, payload) => {
+                            const data = payload as unknown as {
+                              performance?: number;
+                              schemeSuccess?: number;
+                            };
+                            return (
+                              <div className="grid gap-1">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">Contribution</span>
+                                  <span className="font-mono font-medium tabular-nums">{Number(value).toFixed(2)}</span>
+                                </div>
+                                {data?.performance !== undefined ? (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">Indicator score</span>
+                                    <span className="font-mono font-medium tabular-nums">{data.performance}</span>
+                                  </div>
+                                ) : null}
+                                {data?.schemeSuccess !== undefined ? (
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-muted-foreground">Scheme success</span>
+                                    <span className="font-mono font-medium tabular-nums">{data.schemeSuccess}%</span>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          }}
+                        />
+                      }
+                    />
+                    <Bar dataKey="contribution" name="contribution" fill="var(--color-contribution)" radius={[4, 4, 4, 4]} />
+                  </BarChart>
+                </ChartContainer>
+                <div className="mt-2 text-xs text-muted-foreground">
+                  Contributions are normalized to index points.
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
           <CardHeader>
             <CardTitle>Waste trend (daily total)</CardTitle>
           </CardHeader>
@@ -466,7 +677,7 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Monthly CO2e reduction (Kg)</CardTitle>
+          <CardTitle>Monthly CO2e reduction (Kg CO2eq)</CardTitle>
           <div className="flex w-full items-center justify-start gap-2 sm:w-auto sm:justify-end">
             <Button
               type="button"
@@ -502,7 +713,7 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
             <ChartContainer
               className="h-[320px] w-full"
               config={{
-                co2eq: { label: "CO2e (Kg)", color: "#22c55e" },
+                co2eq: { label: "Kg CO2eq", color: "#22c55e" },
               }}
             >
               <ComposedChart data={monthlyCo2} margin={{ left: 8, right: 8, top: 8 }}>
@@ -550,7 +761,7 @@ export function DashboardClient({ initialRows, refreshSignal }: { initialRows: A
           )}
 
           <div className="mt-2 text-xs text-muted-foreground">
-            Conversion factor: 1 kg food waste = 1 kg CO2e reduction.
+            Conversion factor: 1 kg food waste = 1 kg CO2eq reduction.
           </div>
         </CardContent>
       </Card>
